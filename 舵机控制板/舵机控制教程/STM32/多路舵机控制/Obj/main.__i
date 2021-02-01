@@ -1,0 +1,5 @@
+-c --cpu Cortex-M3 -g -O0 --apcs=interwork -I..\Api -I..\User 
+-I d:\Keil\ARM\RV31\INC 
+-I d:\Keil\ARM\CMSIS\Include 
+-I d:\Keil\ARM\Inc\ST\STM32F10x 
+-o "..\Obj\main.o" --omf_browse "..\Obj\main.crf" --depend "..\Obj\main.d" "..\User\main.c"

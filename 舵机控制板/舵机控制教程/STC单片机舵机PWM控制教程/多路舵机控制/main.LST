@@ -1,0 +1,242 @@
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:35:52 PAGE 1   
+
+
+C51 COMPILER V9.06, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE main.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          /*****************************************************************************
+   2           ** 文件                        : main.c
+   3           ** 作者                        : Zheng23
+   4           ** 日期                        :                       
+   5           ** 功能                        :   产生8路PWM输出控制8路舵机，方法：将20毫秒分成8个2500微秒，
+   6                                                          即8个单元，先计算出第一个单元的舵机PWM控制线的脉冲宽度，因
+   7                                                          为控制舵机的脉冲宽度最大为2500微秒，剩余的（20000 - 2500）
+   8                                                          毫秒就是剩下的7个单元时间，第一个单元的舵机PWM控制线全部为
+   9                                                          低电平了，这时就可以安心的处理剩下的7个单元的事情了，同理
+  10                                                          第二个单元也是一样，这样循环下去就可以控制8路PWM输出了。
+  11          
+  12          /*****************************************************************************/
+  13          //#include <STC15.h>
+  14          //#include"STC89C5xRC.H"
+  15          
+  16          
+  17          //一定要用12M的晶振
+  18          //一定要用12M的晶振
+  19          //一定要用12M的晶振
+  20          //一定要用12M的晶振
+  21          //一定要用12M的晶振
+  22          //一定要用12M的晶振
+  23          
+  24          #include "reg51.h"
+  25          
+  26          #define uint8   unsigned char    
+  27          #define uint16  unsigned short int
+  28          #define uint32  unsigned long 
+  29          
+  30          sbit SERVO0=P0^0;                       //控制舵机的PWM输出口
+  31          sbit SERVO1=P0^1;                       
+  32          sbit SERVO2=P0^2;               
+  33          sbit SERVO3=P0^3;
+  34          sbit SERVO4=P0^4;               
+  35          sbit SERVO5=P0^5;               
+  36          sbit SERVO6=P0^6;                       
+  37          sbit SERVO7=P0^7;
+  38                                  
+  39          uint16 ServoPwmDuty[8] = {1500,1500,1500,1500,1500,1500,1500,1500};     //PWM脉冲宽度
+  40          /***********************************************************
+  41          * 名    称： DelayMs(uint16 ms) 
+  42          * 功    能： 延时ms毫秒
+  43          * 入口参数： ms 毫秒
+  44          * 出口参数： 无
+  45          * 说    明：                                     
+  46          /**********************************************************/
+  47          void DelayMs(uint16 ms)
+  48          {
+  49   1              uint16 i,j;
+  50   1              for(i=0;i<85;i++)               //89单片机用85,12系列单片机用800
+  51   1                      for(j=0;j<ms;j++);
+  52   1      }
+  53          /***********************************************************
+  54          * 名    称：InitTimer0()
+  55          * 功    能：时钟0初始化
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:35:52 PAGE 2   
+
+  56          * 入口参数：无
+  57          * 出口参数：无
+  58          * 说    明：12M晶振，12分频，所以计数器每递增一个数就是1微秒，完全满足舵机控制的精度要求
+  59                                  因为定时器是TH0，TL0都要全部计数到0xFF后在计1个数就会产生中断，所以要想产生
+  60                                  x毫秒的中断，那么TH0，TL0就应该赋值（0xFFFF-x） 从这个值开始计数产生定时中断                                     
+  61          /**********************************************************/ 
+  62          void InitTimer0(void)
+  63          {
+  64   1              TMOD &= 0xF0;           //设置定时器模式
+  65   1              TMOD |= 0x01;           //设置定时器模式
+  66   1              TL0 = 0x00;                     //设置定时初值
+  67   1              TH0 = 0x00;                     //设置定时初值
+  68   1              TF0 = 0;                        //清除TF0标志
+  69   1              TR0 = 1;                        //定时器0开始计时
+  70   1              ET0 = 1;                        //开定时器0中断
+  71   1      }
+  72          /***********************************************************
+  73          * 名    称：Timer0Value(uint16 pwm)  
+  74          * 功    能：给定时器0计数器赋值产生定时中断 
+  75          * 入口参数：pwm         控制舵机的PWM脉冲宽度值（范围：500~2500）
+  76          * 出口参数：无
+  77          * 说    明：12M晶振，12分频，所以计数器每递增一个数就是1微秒，完全满足舵机控制的精度要求
+  78                                  因为定时器是TH0，TL0都要全部计数到0xFF后在计1个数就会产生中断，所以要想产生
+  79                                  pwm毫秒的中断，那么TH0，TL0就应该赋值（0xFFFF-pwm）     从这个值开始计数产生定时中断                                     
+  80          /**********************************************************/ 
+  81          void Timer0Value(uint16 pwm)
+  82          {
+  83   1              uint16 value;
+  84   1              value=0xffff-pwm;               
+  85   1              TR0 = 0;
+  86   1              TL0=value;                      //16位数据给8位数据赋值默认将16位数据的低八位直接赋给八位数据
+  87   1          TH0=value>>8;               //将16位数据右移8位，也就是将高8位移到低八位，再赋值给8位数据   
+  88   1              TR0 = 1;
+  89   1      }
+  90          /***********************************************************
+  91          * 名    称： main()
+  92          * 功    能： 入口函数
+  93          * 入口参数： 无
+  94          * 出口参数： 无
+  95          * 说    明：                                     
+  96          /**********************************************************/ 
+  97          void main(void)
+  98          {
+  99   1              uint8 i;
+ 100   1              InitTimer0();   //定时器0初始化
+ 101   1              EA = 1;                 //开总中断
+ 102   1              while(1)                //大循环
+ 103   1              {       
+ 104   2                      for(i = 0;i<8;i++)
+ 105   2                              ServoPwmDuty[i] = 500;          //脉冲宽度在500微秒，对应-90°
+ 106   2                      DelayMs(1000);                                  //延时1秒
+ 107   2                      for(i = 0;i<8;i++)
+ 108   2                              ServoPwmDuty[i] = 1000;         //脉冲宽度在1000微秒，对应-45°
+ 109   2                      DelayMs(1000);
+ 110   2                      for(i = 0;i<8;i++)
+ 111   2                              ServoPwmDuty[i] = 1500;         //脉冲宽度在1500微秒，对应0°
+ 112   2                      DelayMs(1000);                                  //延时1秒
+ 113   2                      for(i = 0;i<8;i++)
+ 114   2                              ServoPwmDuty[i] = 2000;         //脉冲宽度在2000微秒，对应45°
+ 115   2                      DelayMs(1000);
+ 116   2                      for(i = 0;i<8;i++)
+ 117   2                              ServoPwmDuty[i] = 2500;         //脉冲宽度在2500微秒，对应90°
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:35:52 PAGE 3   
+
+ 118   2                      DelayMs(1000);                                  //延时1秒
+ 119   2                      for(i = 0;i<8;i++)
+ 120   2                              ServoPwmDuty[i] = 2000; 
+ 121   2                      DelayMs(1000);
+ 122   2                      for(i = 0;i<8;i++)
+ 123   2                              ServoPwmDuty[i] = 1500;         
+ 124   2                      DelayMs(1000);                                  //延时1秒
+ 125   2                      for(i = 0;i<8;i++)
+ 126   2                              ServoPwmDuty[i] = 1000; 
+ 127   2                      DelayMs(1000);
+ 128   2              }
+ 129   1      }
+ 130          
+ 131          /***********************************************************
+ 132          * 名    称： Timer0_isr() interrupt 1 using 1
+ 133          * 功    能： 时钟0中断处理
+ 134          * 入口参数： 无
+ 135          * 出口参数： 无
+ 136          * 说    明：                                     
+ 137          /**********************************************************/ 
+ 138          void Timer0_isr(void) interrupt 1 using 1
+ 139          {
+ 140   1              static uint16 i = 1;    //静态变量：每次调用函数时保持上一次所赋的值，
+ 141   1                                                              //跟全局变量类似，不同是它只能用于此函数内部
+ 142   1              switch(i)
+ 143   1              {
+ 144   2                      case 1:
+ 145   2                              SERVO0 = 1;     //PWM控制脚高电平
+ 146   2                              //给定时器0赋值，计数Pwm0Duty个脉冲后产生中断，下次中断会进入下一个case语句
+ 147   2                              Timer0Value(ServoPwmDuty[0]);   
+ 148   2                              break;
+ 149   2                      case 2:
+ 150   2                              SERVO0 = 0;     //PWM控制脚低电平
+ 151   2                              //此计数器赋值产生的中断表示下一个单元要进行任务的开始
+ 152   2                              Timer0Value(2500-ServoPwmDuty[0]);      
+ 153   2                              break;
+ 154   2                      case 3:
+ 155   2                              SERVO1 = 1;     
+ 156   2                              Timer0Value(ServoPwmDuty[1]);   
+ 157   2                              break;
+ 158   2                      case 4:
+ 159   2                              SERVO1 = 0;     //PWM控制脚低电平
+ 160   2                              Timer0Value(2500-ServoPwmDuty[1]);      
+ 161   2                              break;
+ 162   2                      case 5:
+ 163   2                              SERVO2 = 1;     
+ 164   2                              Timer0Value(ServoPwmDuty[2]);   
+ 165   2                              break;
+ 166   2                      case 6:
+ 167   2                              SERVO2 = 0;     //PWM控制脚低电平
+ 168   2                              Timer0Value(2500-ServoPwmDuty[2]);      
+ 169   2                              break;  
+ 170   2                      case 7:
+ 171   2                              SERVO3 = 1;     
+ 172   2                              Timer0Value(ServoPwmDuty[3]);   
+ 173   2                              break;
+ 174   2                      case 8:
+ 175   2                              SERVO3 = 0;     //PWM控制脚低电平
+ 176   2                              Timer0Value(2500-ServoPwmDuty[3]);      
+ 177   2                              break;  
+ 178   2                      case 9:
+ 179   2                              SERVO4 = 1;     
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:35:52 PAGE 4   
+
+ 180   2                              Timer0Value(ServoPwmDuty[4]);   
+ 181   2                              break;
+ 182   2                      case 10:
+ 183   2                              SERVO4 = 0;     //PWM控制脚低电平
+ 184   2                              Timer0Value(2500-ServoPwmDuty[4]);      
+ 185   2                              break;  
+ 186   2                      case 11:
+ 187   2                              SERVO5 = 1;     
+ 188   2                              Timer0Value(ServoPwmDuty[5]);   
+ 189   2                              break;
+ 190   2                      case 12:
+ 191   2                              SERVO5 = 0;     //PWM控制脚低电平
+ 192   2                              Timer0Value(2500-ServoPwmDuty[5]);      
+ 193   2                              break;
+ 194   2                      case 13:
+ 195   2                              SERVO6 = 1;     
+ 196   2                              Timer0Value(ServoPwmDuty[6]);   
+ 197   2                              break;
+ 198   2                      case 14:
+ 199   2                              SERVO6 = 0;     //PWM控制脚低电平
+ 200   2                              Timer0Value(2500-ServoPwmDuty[6]);      
+ 201   2                              break;
+ 202   2                      case 15:
+ 203   2                              SERVO7 = 1;     
+ 204   2                              Timer0Value(ServoPwmDuty[7]);   
+ 205   2                              break;
+ 206   2                      case 16:
+ 207   2                              SERVO7 = 0;     //PWM控制脚低电平
+ 208   2                              Timer0Value(2500-ServoPwmDuty[7]);
+ 209   2                              i = 0;  
+ 210   2                              break;                           
+ 211   2              }
+ 212   1              i++;
+ 213   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    548    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     18    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

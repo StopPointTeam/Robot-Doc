@@ -1,0 +1,27 @@
+Dependencies for Project 'APP', Target 'Target 1': (DO NOT MODIFY !)
+F (..\Api\startup_stm32f10x_md.s)(0x532BB228)(--cpu Cortex-M3 -g --apcs=interwork -I d:\Keil\ARM\RV31\INC -I d:\Keil\ARM\CMSIS\Include -I d:\Keil\ARM\Inc\ST\STM32F10x --list "..\Obj\startup_stm32f10x_md.lst" --xref -o "..\Obj\startup_stm32f10x_md.o" --depend "..\Obj\startup_stm32f10x_md.d")
+F (..\Api\Api_System.c)(0x5587B7D5)(-c --cpu Cortex-M3 -g -O0 --apcs=interwork -I..\Api -I..\User -I d:\Keil\ARM\RV31\INC -I d:\Keil\ARM\CMSIS\Include -I d:\Keil\ARM\Inc\ST\STM32F10x -o "..\Obj\api_system.o" --omf_browse "..\Obj\api_system.crf" --depend "..\Obj\api_system.d")
+I (..\User\include.h)(0x5586A480)
+I (..\User\App.h)(0x5587B850)
+I (..\Api\Api_System.h)(0x5587B7CC)
+I (..\Api\stm32f10x_type.h)(0x4A0282C6)
+I (..\Api\stm32f10x_map.h)(0x4A0282C6)
+I (..\Api\stm32f10x_conf.h)(0x4A0282C6)
+I (..\Api\cortexm3_macro.h)(0x4A0282C6)
+I (..\Api\stm32f10x_nvic.h)(0x4A0282C6)
+F (..\User\App.c)(0x5587B9D4)(-c --cpu Cortex-M3 -g -O0 --apcs=interwork -I..\Api -I..\User -I d:\Keil\ARM\RV31\INC -I d:\Keil\ARM\CMSIS\Include -I d:\Keil\ARM\Inc\ST\STM32F10x -o "..\Obj\app.o" --omf_browse "..\Obj\app.crf" --depend "..\Obj\app.d")
+I (..\User\include.h)(0x5586A480)
+I (..\User\App.h)(0x5587B850)
+I (..\Api\Api_System.h)(0x5587B7CC)
+I (..\Api\stm32f10x_type.h)(0x4A0282C6)
+I (..\Api\stm32f10x_map.h)(0x4A0282C6)
+I (..\Api\stm32f10x_conf.h)(0x4A0282C6)
+I (..\Api\cortexm3_macro.h)(0x4A0282C6)
+F (..\User\main.c)(0x5587B969)(-c --cpu Cortex-M3 -g -O0 --apcs=interwork -I..\Api -I..\User -I d:\Keil\ARM\RV31\INC -I d:\Keil\ARM\CMSIS\Include -I d:\Keil\ARM\Inc\ST\STM32F10x -o "..\Obj\main.o" --omf_browse "..\Obj\main.crf" --depend "..\Obj\main.d")
+I (..\User\include.h)(0x5586A480)
+I (..\User\App.h)(0x5587B850)
+I (..\Api\Api_System.h)(0x5587B7CC)
+I (..\Api\stm32f10x_type.h)(0x4A0282C6)
+I (..\Api\stm32f10x_map.h)(0x4A0282C6)
+I (..\Api\stm32f10x_conf.h)(0x4A0282C6)
+I (..\Api\cortexm3_macro.h)(0x4A0282C6)

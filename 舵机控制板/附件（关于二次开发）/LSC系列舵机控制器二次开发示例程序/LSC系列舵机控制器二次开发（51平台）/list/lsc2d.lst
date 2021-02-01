@@ -1,0 +1,288 @@
+C51 COMPILER V9.52.0.0   LSC2D                                                             07/10/2016 12:43:24 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE LSC2D
+OBJECT MODULE PLACED IN ..\output\lsc2d.obj
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE ..\src\lsc2d.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\list\lsc2d.lst) TAB
+                    -S(2) OBJECT(..\output\lsc2d.obj)
+
+line level    source
+
+   1          /******************************************************
+   2           * FileName:      lsc2d.c
+   3           * Company:       乐幻索尔
+   4           * Date:          2016/07/09  09:30
+   5           * Description:   Lobot舵机控制板二次开发示例，基于stc89c52rc开发，
+   6           *                本文件包含了二次开发各命令的具体实现。
+   7           *                @@特别说明：舵机控制板的通信口只支持9600波特率@@
+   8           *****************************************************/
+   9          
+  10          #include "lsc2d.h"
+  11          
+  12          #define GET_LOW_BYTE(A) ((uint8_t)(A))
+  13          //宏函数 获得A的低八位
+  14          #define GET_HIGH_BYTE(A) ((uint8_t)((A) >> 8))
+  15          //宏函数 获得B的高八位
+  16          
+  17          uint8_t buf[103];  //建立发送缓存
+  18          
+  19          /*********************************************************************************
+  20           * Function:  moveServo
+  21           * Description： 控制单个舵机转动
+  22           * Parameters:   sevoID:舵机ID，Position:目标位置,Time:转动时间
+  23                              舵机ID取值:0<=舵机ID<=31,Time取值: Time > 0
+  24           * Return:       无返回
+  25           * Others:
+  26           **********************************************************************************/
+  27          void moveServo(uint8_t servoID, uint16_t Position, uint16_t Time)
+  28          {
+  29   1        if (servoID > 31 || !(Time > 0)) { //舵机ID不能打于31,可根据对应控制板修改
+  30   2          return;
+  31   2        }
+  32   1        buf[0] = buf[1] = FRAME_HEADER;    //填充帧头
+  33   1        buf[2] = 8;
+  34   1        buf[3] = CMD_SERVO_MOVE;           //数据长度=要控制舵机数*3+5，此处=1*3+5//填充舵机移�
+             -��指令
+  35   1        buf[4] = 1;                        //要控制的舵机个数
+  36   1        buf[5] = GET_LOW_BYTE(Time);       //取得时间的低八位
+  37   1        buf[6] = GET_HIGH_BYTE(Time);      //取得时间的高八位
+  38   1        buf[7] = servoID;                  //舵机ID
+  39   1        buf[8] = GET_LOW_BYTE(Position);   //取得目标位置的低八位
+  40   1        buf[9] = GET_HIGH_BYTE(Position);  //取得目标位置的高八位
+  41   1      
+  42   1        uartWriteBuf(buf, 10);
+  43   1      }
+  44          
+  45          /*********************************************************************************
+  46           * Function:  moveServosByArray
+  47           * Description： 控制多个舵机转动
+  48           * Parameters:   servos[]:舵机结体数组，Num:舵机个数,Time:转动时间
+  49                              0 < Num <= 32,Time > 0
+  50           * Return:       无返回
+  51           * Others:
+  52           **********************************************************************************/
+  53          void moveServosByArray(LobotServo servos[], uint8_t Num, uint16_t Time)
+C51 COMPILER V9.52.0.0   LSC2D                                                             07/10/2016 12:43:24 PAGE 2   
+
+  54          {
+  55   1        uint8_t index = 7;
+  56   1        uint8_t i = 0;
+  57   1      
+  58   1        if (Num < 1 || Num > 32 || !(Time > 0)) {
+  59   2          return;                                          //舵机数不能为零和大与32，时间不能为零
+  60   2        }
+  61   1        buf[0] = buf[1] = FRAME_HEADER;                    //填充帧头
+  62   1        buf[2] = Num * 3 + 5;                              //数据长度 = 要控制舵机数*3+5
+  63   1        buf[3] = CMD_SERVO_MOVE;                           //填充舵机移动指令
+  64   1        buf[4] = Num;                                      //要控制的舵机个数
+  65   1        buf[5] = GET_LOW_BYTE(Time);                       //取得时间的低八位
+  66   1        buf[6] = GET_HIGH_BYTE(Time);                      //取得时间的高八位
+  67   1      
+  68   1        for (i = 0; i < Num; i++) {                        //循环填充舵机ID和对应目标位置
+  69   2          buf[index++] = servos[i].ID;                     //填充舵机ID
+  70   2          buf[index++] = GET_LOW_BYTE(servos[i].Position); //填充目标位置低八位
+  71   2          buf[index++] = GET_HIGH_BYTE(servos[i].Position);//填充目标位置高八位
+  72   2        }
+  73   1      
+  74   1        uartWriteBuf(buf, buf[2] + 2);             //发送帧，长度为数据长度+两个字节的帧头
+  75   1      }
+  76          
+  77          /*********************************************************************************
+  78           * Function:  moveServos
+  79           * Description： 控制多个舵机转动
+  80           * Parameters:   Num:舵机个数,Time:转动时间,...:舵机ID,转动角，舵机ID,转动角度 如此�
+             -��推
+  81           * Return:       无返回
+  82           * Others:
+  83           **********************************************************************************/
+  84          void moveServos(uint8_t Num, uint16_t Time, ...)
+  85          {
+  86   1        uint8_t index = 7;
+  87   1        uint8_t i = 0;
+  88   1        uint16_t temp;
+  89   1        va_list arg_ptr = NULL;  //可变参数
+  90   1      
+  91   1        va_start(arg_ptr, Time); //取得可变参数首地址
+  92   1        if (Num < 1 || Num > 32 || (!(Time > 0)) || arg_ptr == NULL) {
+  93   2          return;               //舵机数不能为零和大与32，时间不能为零，可变参数不能为空
+  94   2        }
+  95   1      
+  96   1        buf[0] = buf[1] = FRAME_HEADER;      //填充帧头
+  97   1        buf[2] = Num * 3 + 5;                //数据长度 = 要控制舵机数 * 3 + 5
+  98   1        buf[3] = CMD_SERVO_MOVE;             //舵机移动指令
+  99   1        buf[4] = Num;                        //要控制舵机数
+ 100   1        buf[5] = GET_LOW_BYTE(Time);         //取得时间的低八位
+ 101   1        buf[6] = GET_HIGH_BYTE(Time);        //取得时间的高八位
+ 102   1      
+ 103   1        for (i = 0; i < Num; i++) {//从可变参数中取得并循环填充舵机ID和对应目标位置
+ 104   2          temp = va_arg(arg_ptr, uint8_t);//可参数中取得舵机ID
+ 105   2          buf[index++] = GET_LOW_BYTE(temp);
+ 106   2          temp = va_arg(arg_ptr, uint16_t);  //可变参数中取得对应目标位置
+ 107   2          buf[index++] = GET_LOW_BYTE(temp); //填充目标位置低八位
+ 108   2          buf[index++] = GET_HIGH_BYTE(temp);//填充目标位置高八位
+ 109   2        }
+ 110   1      
+ 111   1        va_end(arg_ptr);  //置空arg_ptr
+ 112   1      
+ 113   1        uartWriteBuf(buf, buf[2] + 2);   //发送帧
+ 114   1      }
+C51 COMPILER V9.52.0.0   LSC2D                                                             07/10/2016 12:43:24 PAGE 3   
+
+ 115          
+ 116          /*********************************************************************************
+ 117           * Function:  runActionGroup
+ 118           * Description： 运行指定动作组
+ 119           * Parameters:   NumOfAction:动作组序号, Times:执行次数
+ 120           * Return:       无返回
+ 121           * Others:       Times = 0 时无限循环
+ 122           **********************************************************************************/
+ 123          void runActionGroup(uint8_t numOfAction, uint16_t Times)
+ 124          {
+ 125   1        buf[0] = buf[1] = FRAME_HEADER;  //填充帧头
+ 126   1        buf[2] = 5;                      //数据长度，数据帧除帧头部分数据字节数，此命令固�
+             -��为5
+ 127   1        buf[3] = CMD_ACTION_GROUP_RUN;   //填充运行动作组命令
+ 128   1        buf[4] = numOfAction;            //填充要运行的动作组号
+ 129   1        buf[5] = GET_LOW_BYTE(Times);    //取得要运行次数的低八位
+ 130   1        buf[6] = GET_HIGH_BYTE(Times);   //取得要运行次数的高八位
+ 131   1      
+ 132   1        uartWriteBuf(buf, 7);            //发送数据帧
+ 133   1      }
+ 134          
+ 135          /*********************************************************************************
+ 136           * Function:  stopActiongGroup
+ 137           * Description： 停止动作组运行
+ 138           * Parameters:   Speed: 目标速度
+ 139           * Return:       无返回
+ 140           * Others:
+ 141           **********************************************************************************/
+ 142          void stopActionGroup(void)
+ 143          {
+ 144   1        buf[0] = FRAME_HEADER;     //填充帧头
+ 145   1        buf[1] = FRAME_HEADER;
+ 146   1        buf[2] = 2;                //数据长度，数据帧除帧头部分数据字节数，此命令固定为2
+ 147   1        buf[3] = CMD_ACTION_GROUP_STOP;   //填充停止运行动作组命令
+ 148   1      
+ 149   1        uartWriteBuf(buf, 4);      //发送数据帧
+ 150   1      }
+ 151          
+ 152          /*********************************************************************************
+ 153           * Function:  setActionGroupSpeed
+ 154           * Description： 设定指定动作组的运行速度
+ 155           * Parameters:   NumOfAction: 动作组序号 , Speed:目标速度
+ 156           * Return:       无返回
+ 157           * Others:
+ 158           **********************************************************************************/
+ 159          void setActionGroupSpeed(uint8_t numOfAction, uint16_t Speed)
+ 160          {
+ 161   1        buf[0] = buf[1] = FRAME_HEADER;   //填充帧头
+ 162   1        buf[2] = 5;                       //数据长度，数据帧除帧头部分数据字节数，此命令固
+             -定为5
+ 163   1        buf[3] = CMD_ACTION_GROUP_SPEED;  //填充设置动作组速度命令
+ 164   1        buf[4] = numOfAction;             //填充要设置的动作组号
+ 165   1        buf[5] = GET_LOW_BYTE(Speed);     //获得目标速度的低八位
+ 166   1        buf[6] = GET_HIGH_BYTE(Speed);    //获得目标熟读的高八位
+ 167   1      
+ 168   1        uartWriteBuf(buf, 7);              //发送数据帧
+ 169   1      }
+ 170          
+ 171          /*********************************************************************************
+ 172           * Function:  setAllActionGroupSpeed
+ 173           * Description： 设置所有动作组的运行速度
+ 174           * Parameters:   Speed: 目标速度
+C51 COMPILER V9.52.0.0   LSC2D                                                             07/10/2016 12:43:24 PAGE 4   
+
+ 175           * Return:       无返回
+ 176           * Others:
+ 177           **********************************************************************************/
+ 178          void setAllActionGroupSpeed(uint16_t Speed)
+ 179          {
+ 180   1        setActionGroupSpeed(0xFF, Speed);  //调用动作组速度设定，组号为0xFF时设置所有组的速�
+             -��
+ 181   1      }
+ 182          
+ 183          uint8_t receiveBuf[6];      //建立接收缓存
+ 184          uint8_t gotBatteryVoltage;  //接收到电压数据标识
+ 185          
+ 186          /*********************************************************************************
+ 187           * Function:  getBatteryVoltage
+ 188           * Description： 发送获取电池电压命令
+ 189           * Parameters:   Timeout：重试次数
+ 190           * Return:       无返回
+ 191           * Others:
+ 192           **********************************************************************************/
+ 193          uint16_t getBatteryVoltage(uint16_t timeOut)
+ 194          {
+ 195   1        uint16_t Voltage = 0;
+ 196   1        buf[0] = FRAME_HEADER;  //填充帧头
+ 197   1        buf[1] = FRAME_HEADER;
+ 198   1        buf[2] = 2;             //数据长度，数据帧除帧头部分数据字节数，此命令固定为2
+ 199   1        buf[3] = CMD_GET_BATTERY_VOLTAGE;  //填充后的电池电压命令
+ 200   1      
+ 201   1        uartWriteBuf(buf, 4);   //发送数据帧
+ 202   1      
+ 203   1        while (timeOut--) {
+ 204   2          if (gotBatteryVoltage) {   //接收到电压数据
+ 205   3            Voltage = (((uint16_t)receiveBuf[5]) << 8) | receiveBuf[4];   //合高地八位为16位整数
+ 206   3            gotBatteryVoltage = 0; //置gotBatteryVoltage为0
+ 207   3            ES = 1;          //使能串口中断
+ 208   3            return Voltage;  //返回电压数据
+ 209   3          }
+ 210   2        }
+ 211   1      
+ 212   1        return 0;  //失败，返回0
+ 213   1      }
+ 214          
+ 215          extern uint8_t busy; //声明串口发送忙标识
+ 216          
+ 217          /*********************************************************************************
+ 218           * Function:  receiveHandle
+ 219           * Description： 串口中断函数，处理接收数据，发送中断
+ 220           * Parameters:   无输入参数
+ 221           * Return:       无返回
+ 222           * Others:
+ 223           **********************************************************************************/
+ 224          void receiveHandle() interrupt 4
+ 225          {
+ 226   1        static uint8_t count;
+ 227   1        if (RI) {  //接收中断
+ 228   2          RI = 0;  //复位接收中断标识
+ 229   2          receiveBuf[count] = SBUF;   //读接收寄存器
+ 230   2          if (count < 2 && receiveBuf[count] == FRAME_HEADER) {  //辨识帧头
+ 231   3            count++;
+ 232   3          }else if (count == 2) {   //数据长度
+ 233   3            count++;
+ 234   3          }else if ((count - 1) < receiveBuf[2]) {   //接收数据
+ 235   3            count++;
+C51 COMPILER V9.52.0.0   LSC2D                                                             07/10/2016 12:43:24 PAGE 5   
+
+ 236   3          }else if ((count - 1) == receiveBuf[2]) {  //完成接收
+ 237   3            count = 0;
+ 238   3            if (receiveBuf[3] == CMD_GET_BATTERY_VOLTAGE) {
+ 239   4              gotBatteryVoltage = 1;  //置1接收到电压数据标识
+ 240   4              ES = 0;  //失能串口中断
+ 241   4            }
+ 242   3          }else{
+ 243   3            count = 0; //接收计数置0
+ 244   3            memset(receiveBuf, 0, sizeof(receiveBuf));   //置0 缓存
+ 245   3          }
+ 246   2        }
+ 247   1        if (TI) {     //发送中断
+ 248   2          TI = 0;     //复位发送中断标识
+ 249   2          busy = 0;   //串口发送忙标识置0
+ 250   2        }
+ 251   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    998    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    111      58
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

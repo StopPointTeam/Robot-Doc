@@ -1,0 +1,6 @@
+"..\output\STARTUP.obj",
+"..\output\lsc2d.obj",
+"..\output\main.obj",
+"..\output\uart.obj" 
+TO "..\output\lsc2d" 
+PRINT("..\list\lsc2d.m51") RAMSIZE(256) 

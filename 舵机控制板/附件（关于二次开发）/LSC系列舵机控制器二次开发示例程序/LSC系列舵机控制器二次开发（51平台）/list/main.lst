@@ -1,0 +1,101 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              07/10/2016 12:43:24 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\output\main.obj
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE ..\src\main.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\list\main.lst) TABS(
+                    -2) OBJECT(..\output\main.obj)
+
+line level    source
+
+   1          /******************************************************
+   2           * FileName:      main.c
+   3           * Company:       乐幻索尔
+   4           * Date:          2016/07/09  09:30
+   5           * Description:   Lobot舵机控制板二次开发示例，基于stc89c52rc开发
+   6           *                @@特别说明：舵机控制板的通信口只支持9600波特率@@
+   7           *****************************************************/
+   8          
+   9          #include "lsc2d.h"
+  10          #include "intrins.h"
+  11          
+  12          //延时1000ms
+  13          void Delay1000ms()              //@11.0592MHz
+  14          {
+  15   1        unsigned char i, j, k;
+  16   1      
+  17   1        _nop_();
+  18   1        i = 8;
+  19   1        j = 1;
+  20   1        k = 243;
+  21   1        do {
+  22   2          do {
+  23   3            while (--k);
+  24   3          } while (--j);
+  25   2        } while (--i);
+  26   1      }
+  27          
+  28          LobotServo servos[2];
+  29          
+  30          int main()
+  31          {
+  32   1        LobotServo servos[2];
+  33   1        uint16_t voltage;
+  34   1        uint8_t i;
+  35   1      
+  36   1        uartInit();     //初始化串口
+  37   1        Delay1000ms();
+  38   1      
+  39   1        runActionGroup(100, 0);  //运行100号动作组
+  40   1        i = 5;
+  41   1        while (i--)
+  42   1          Delay1000ms();
+  43   1        stopActionGroup();      //停止动作组
+  44   1        Delay1000ms();
+  45   1      
+  46   1        setActionGroupSpeed(100, 200);  //设置100号动作组速度为200%
+  47   1        runActionGroup(100, 0);         //运行100号动作组
+  48   1        i = 5;
+  49   1        while (i--)
+  50   1          Delay1000ms();
+  51   1        stopActionGroup();     //停止动作组
+  52   1        Delay1000ms();
+  53   1      
+  54   1        moveServo(0, 1500, 1000);  //1000ms移动0号舵机至1500位置
+C51 COMPILER V9.52.0.0   MAIN                                                              07/10/2016 12:43:24 PAGE 2   
+
+  55   1      
+  56   1        Delay1000ms();
+  57   1        moveServo(2, 800, 1000);  //1000ms移动2号舵机至800位置
+  58   1        Delay1000ms();
+  59   1      
+  60   1        moveServos(5, 1000, 0, 1300, 2, 700, 4, 600, 6, 900, 8, 790); //1000ms移动5个舵机
+  61   1        //0号舵机至1300位置，2号舵机至700位置，4号舵机至600位置，6号舵机至900位置，8�
+             -��舵机至790位置
+  62   1        Delay1000ms();
+  63   1      
+  64   1        servos[0].ID = 2; //舵机号2
+  65   1        servos[0].Position = 1400; //1400位置
+  66   1        servos[1].ID = 4; //舵机号4
+  67   1        servos[1].Position = 700;  //700位置
+  68   1        moveServosByArray(servos, 2, 1000); //移动2个舵机1000ms，位置和舵机号有 servos指定
+  69   1        Delay1000ms();
+  70   1      
+  71   1        voltage = getBatteryVoltage(5000); //获得电池电压
+  72   1      
+  73   1        while (1);
+  74   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    253    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      6       8
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

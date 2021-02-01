@@ -1,0 +1,5 @@
+"STARTUP.obj",
+"main.obj" 
+TO "Project1" 
+RAMSIZE(256) 
+DISABLEWARNING (16) 

@@ -1,0 +1,2 @@
+C:\Keil\C51\INC\STC
+C:\Keil\C51\INC\Atmel

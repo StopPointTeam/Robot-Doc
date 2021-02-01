@@ -1,0 +1,7 @@
+---- ServoPwmDutyIncTimes Matches (6 in 1 files) ----
+Main.c:uint16 ServoPwmDutyIncTimes;	//
+Main.c:		ServoPwmDutyIncTimes = ServoTime*2/5;
+Main.c:				ServoPwmDutyInc[i] /= ServoPwmDutyIncTimes;
+Main.c:		ServoPwmDutyIncTimes--;
+Main.c:			if(ServoPwmDutyIncTimes == 0)
+Main.c:					(signed short int)(ServoPwmDutyInc[i] * ServoPwmDutyIncTimes);

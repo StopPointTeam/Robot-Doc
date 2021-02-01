@@ -1,0 +1,331 @@
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:36:29 PAGE 1   
+
+
+C51 COMPILER V9.06, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE main.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          /*****************************************************************************
+   2           ** ÎÄ¼þ                        : main.c
+   3           ** ×÷Õß                        : Zheng23
+   4           ** ÈÕÆÚ                        :                       
+   5           ** ¹¦ÄÜ                        :   ²úÉú8Â·PWMÊä³ö¿ØÖÆ8Â·¶æ»ú£¬·½·¨£º½«20ºÁÃë·Ö³É8¸ö2500Î¢Ãë£¬
+   6                                                          ¼´8¸öµ¥Ôª£¬ÏÈ¼ÆËã³öµÚÒ»¸öµ¥ÔªµÄ¶æ»úPWM¿ØÖÆÏßµÄÂö³å¿í¶È£¬Òò
+   7                                                          Îª¿ØÖÆ¶æ»úµÄÂö³å¿í¶È×î´óÎª2500Î¢Ãë£¬Ê£ÓàµÄ£¨20000 - 2500£©
+   8                                                          ºÁÃë¾ÍÊÇÊ£ÏÂµÄ7¸öµ¥ÔªÊ±¼ä£¬µÚÒ»¸öµ¥ÔªµÄ¶æ»úPWM¿ØÖÆÏßÈ«²¿Îª
+   9                                                          µÍµçÆ½ÁË£¬ÕâÊ±¾Í¿ÉÒÔ°²ÐÄµÄ´¦ÀíÊ£ÏÂµÄ7¸öµ¥ÔªµÄÊÂÇéÁË£¬Í¬Àí
+  10                                                          µÚ¶þ¸öµ¥ÔªÒ²ÊÇÒ»Ñù£¬ÕâÑùÑ­»·ÏÂÈ¥¾Í¿ÉÒÔ¿ØÖÆ8Â·PWMÊä³öÁË¡£
+  11          
+  12          /*****************************************************************************/
+  13          //#include <STC15.h>
+  14          //#include"STC89C5xRC.H"
+  15          
+  16          
+  17          //Ò»¶¨ÒªÓÃ12MµÄ¾§Õñ
+  18          //Ò»¶¨ÒªÓÃ12MµÄ¾§Õñ
+  19          //Ò»¶¨ÒªÓÃ12MµÄ¾§Õñ
+  20          //Ò»¶¨ÒªÓÃ12MµÄ¾§Õñ
+  21          //Ò»¶¨ÒªÓÃ12MµÄ¾§Õñ
+  22          //Ò»¶¨ÒªÓÃ12MµÄ¾§Õñ
+  23          
+  24          
+  25          #include "reg51.h"
+  26          
+  27          #define bool    bit
+  28          #define uint8   unsigned char    
+  29          #define uint16  unsigned short int
+  30          #define uint32  unsigned long 
+  31          
+  32          sbit SERVO0=P0^0;                       //¿ØÖÆ¶æ»úµÄPWMÊä³ö¿Ú
+  33          sbit SERVO1=P0^1;                       
+  34          sbit SERVO2=P0^2;               
+  35          sbit SERVO3=P0^3;
+  36          sbit SERVO4=P0^4;               
+  37          sbit SERVO5=P0^5;               
+  38          sbit SERVO6=P0^6;                       
+  39          sbit SERVO7=P0^7;
+  40          
+  41          sbit LED=P2^7;          //µ÷ÊÔÓÃ
+  42          
+  43          uint16 ServoPwmDuty[8] = {1500,1500,1500,1500,1500,1500,1500,1500};     //PWMÂö³å¿í¶È
+  44          uint16 ServoPwmDutySet[8] = {1500,1500,1500,1500,1500,1500,1500,1500};  //PWMÂö³å¿í¶È
+  45          double ServoPwmDutyInc[8];              //ÎªÁËËÙ¶È¿ØÖÆ£¬µ±PWMÂö¿í·¢Éú±ä»¯Ê±£¬Ã¿2.5ms»ò20msµÝÔöµÄPWMÂö¿í
+  46          
+  47          bool Flag_20ms = 0;             //20ºÁÃë±êÊ¶Î»£¬ÔÚ¶¨Ê±ÖÐ¶ÏÀïÃæÖÃÎ»
+  48          bool Flag_2_5ms = 0;    //2.5ºÁÃë±êÊ¶Î»£¬ÔÚ¶¨Ê±ÖÐ¶ÏÀïÃæÖÃÎ»
+  49          bool ServoPwmDutyHaveChange = 0;        //Âö¿íÓÐ±ä»¯±êÖ¾Î»
+  50          uint16 ServoTime = 2000;                        //¶æ»ú´Óµ±Ç°½Ç¶ÈÔË¶¯µ½Ö¸¶¨½Ç¶ÈµÄÊ±¼ä£¬Ò²¾ÍÊÇ¿ØÖÆËÙ¶È
+  51          /***********************************************************
+  52          * Ãû    ³Æ£º DelayMs(uint16 ms) 
+  53          * ¹¦    ÄÜ£º ÑÓÊ±msºÁÃë
+  54          * Èë¿Ú²ÎÊý£º ms ºÁÃë
+  55          * ³ö¿Ú²ÎÊý£º ÎÞ
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:36:29 PAGE 2   
+
+  56          * Ëµ    Ã÷£º                                     
+  57          /**********************************************************/
+  58          void DelayMs(uint16 ms)
+  59          {
+  60   1              uint16 i,j;
+  61   1              for(i=0;i<800;i++)              //89µ¥Æ¬»úÓÃ85,12ÏµÁÐµ¥Æ¬»úÓÃ800
+  62   1                      for(j=0;j<ms;j++);
+  63   1      }
+  64          
+  65          /***********************************************************
+  66          * Ãû    ³Æ£ºInitTimer0()
+  67          * ¹¦    ÄÜ£ºÊ±ÖÓ0³õÊ¼»¯
+  68          * Èë¿Ú²ÎÊý£ºÎÞ
+  69          * ³ö¿Ú²ÎÊý£ºÎÞ
+  70          * Ëµ    Ã÷£º12M¾§Õñ£¬12·ÖÆµ£¬ËùÒÔ¼ÆÊýÆ÷Ã¿µÝÔöÒ»¸öÊý¾ÍÊÇ1Î¢Ãë£¬ÍêÈ«Âú×ã¶æ»ú¿ØÖÆµÄ¾«¶ÈÒªÇó
+  71                                  ÒòÎª¶¨Ê±Æ÷ÊÇTH0£¬TL0¶¼ÒªÈ«²¿¼ÆÊýµ½0xFFºóÔÚ¼Æ1¸öÊý¾Í»á²úÉúÖÐ¶Ï£¬ËùÒÔÒªÏë²úÉú
+  72                                  xºÁÃëµÄÖÐ¶Ï£¬ÄÇÃ´TH0£¬TL0¾ÍÓ¦¸Ã¸³Öµ£¨0xFFFF-x£© ´ÓÕâ¸öÖµ¿ªÊ¼¼ÆÊý²úÉú¶¨Ê±ÖÐ¶Ï                                     
+  73          /**********************************************************/ 
+  74          void InitTimer0(void)
+  75          {
+  76   1      //      AUXR &= 0x7F;           //¶¨Ê±Æ÷Ê±ÖÓ12TÄ£Ê½
+  77   1      //      AUXR |= 0x00;           //T0,T1¹¤×÷ÔÚ12T
+  78   1              TMOD &= 0xF0;           //ÉèÖÃ¶¨Ê±Æ÷Ä£Ê½
+  79   1              TMOD |= 0x01;           //ÉèÖÃ¶¨Ê±Æ÷Ä£Ê½
+  80   1              TL0 = 0x00;                     //ÉèÖÃ¶¨Ê±³õÖµ
+  81   1              TH0 = 0x00;                     //ÉèÖÃ¶¨Ê±³õÖµ
+  82   1              TF0 = 0;                        //Çå³ýTF0±êÖ¾
+  83   1              TR0 = 1;                        //¶¨Ê±Æ÷0¿ªÊ¼¼ÆÊ±
+  84   1              ET0 = 1;                        //¿ª¶¨Ê±Æ÷0ÖÐ¶Ï
+  85   1      }
+  86          
+  87          /***********************************************************
+  88          * Ãû    ³Æ£ºTimer0Value(uint16 pwm)  
+  89          * ¹¦    ÄÜ£º¸ø¶¨Ê±Æ÷0¼ÆÊýÆ÷¸³Öµ²úÉú¶¨Ê±ÖÐ¶Ï 
+  90          * Èë¿Ú²ÎÊý£ºpwm         ¿ØÖÆ¶æ»úµÄPWMÂö³å¿í¶ÈÖµ£¨·¶Î§£º500~2500£©
+  91          * ³ö¿Ú²ÎÊý£ºÎÞ
+  92          * Ëµ    Ã÷£º12M¾§Õñ£¬12·ÖÆµ£¬ËùÒÔ¼ÆÊýÆ÷Ã¿µÝÔöÒ»¸öÊý¾ÍÊÇ1Î¢Ãë£¬ÍêÈ«Âú×ã¶æ»ú¿ØÖÆµÄ¾«¶ÈÒªÇó
+  93                                  ÒòÎª¶¨Ê±Æ÷ÊÇTH0£¬TL0¶¼ÒªÈ«²¿¼ÆÊýµ½0xFFºóÔÚ¼Æ1¸öÊý¾Í»á²úÉúÖÐ¶Ï£¬ËùÒÔÒªÏë²úÉú
+  94                                  pwmºÁÃëµÄÖÐ¶Ï£¬ÄÇÃ´TH0£¬TL0¾ÍÓ¦¸Ã¸³Öµ£¨0xFFFF-pwm£©     ´ÓÕâ¸öÖµ¿ªÊ¼¼ÆÊý²úÉú¶¨Ê±ÖÐ¶Ï                                     
+  95          /**********************************************************/ 
+  96          void Timer0Value(uint16 pwm)
+  97          {
+  98   1              uint16 value;
+  99   1              value=0xffff-pwm;               
+ 100   1              TR0 = 0;
+ 101   1              TL0=value;                      //16Î»Êý¾Ý¸ø8Î»Êý¾Ý¸³ÖµÄ¬ÈÏ½«16Î»Êý¾ÝµÄµÍ°ËÎ»Ö±½Ó¸³¸ø°ËÎ»Êý¾Ý
+ 102   1          TH0=value>>8;               //½«16Î»Êý¾ÝÓÒÒÆ8Î»£¬Ò²¾ÍÊÇ½«¸ß8Î»ÒÆµ½µÍ°ËÎ»£¬ÔÙ¸³Öµ¸ø8Î»Êý¾Ý   
+ 103   1              TR0 = 1;
+ 104   1      }
+ 105          
+ 106          /***********************************************************
+ 107          * Ãû    ³Æ£º ServoPwmDutyCompare()
+ 108          * ¹¦    ÄÜ£º Âö¿í±ä»¯±È½Ï¼°ËÙ¶È¿ØÖÆ
+ 109          * Èë¿Ú²ÎÊý£º ÎÞ
+ 110          * ³ö¿Ú²ÎÊý£º ÎÞ
+ 111          * Ëµ    Ã÷£º                                     
+ 112          /**********************************************************/
+ 113          void ServoPwmDutyCompare()
+ 114          {
+ 115   1              uint8 i;
+ 116   1              
+ 117   1              static uint16 ServoPwmDutyIncTimes;     //ÐèÒªµÝÔöµÄ´ÎÊý
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:36:29 PAGE 3   
+
+ 118   1              static bool ServoRunning = 0;   //¶æ»úÕýÔÚÒÔÖ¸¶¨ËÙ¶ÈÔË¶¯µ½Ö¸¶¨µÄÂö¿í¶ÔÓ¦µÄÎ»ÖÃ
+ 119   1              if(ServoRunning == 0 && ServoPwmDutyHaveChange)//Í£Ö¹ÔË¶¯²¢ÇÒÂö¿í·¢Éú±ä»¯Ê±²Å½øÐÐ¼ÆËã
+ 120   1              {
+ 121   2                      ServoPwmDutyHaveChange = 0;
+ 122   2      //              ServoPwmDutyIncTimes = ServoTime*2/5;   //ServoTime/(20/8)      //µ±Ã¿2.5msµ÷ÓÃÒ»´ÎServoPwmDutyCompare()º¯ÊýÊ
+             -±ÓÃ´Ë¾ä
+ 123   2                      ServoPwmDutyIncTimes = ServoTime/20;    //µ±Ã¿20msµ÷ÓÃÒ»´ÎServoPwmDutyCompare()º¯ÊýÊ±ÓÃ´Ë¾ä
+ 124   2                      for(i=0;i<8;i++)
+ 125   2                      {
+ 126   3                              //if(ServoPwmDuty[i] != ServoPwmDutySet[i])
+ 127   3                              {
+ 128   4                                      if(ServoPwmDutySet[i] > ServoPwmDuty[i])
+ 129   4                                      {
+ 130   5                                              ServoPwmDutyInc[i] = ServoPwmDutySet[i] - ServoPwmDuty[i];
+ 131   5                                              ServoPwmDutyInc[i] = -ServoPwmDutyInc[i];
+ 132   5                                      }
+ 133   4                                      else
+ 134   4                                      {
+ 135   5                                              ServoPwmDutyInc[i] = ServoPwmDuty[i] - ServoPwmDutySet[i];
+ 136   5                                              
+ 137   5                                      }
+ 138   4                                      ServoPwmDutyInc[i] /= ServoPwmDutyIncTimes;//Ã¿´ÎµÝÔöµÄÂö¿í
+ 139   4                              }
+ 140   3                      }
+ 141   2                      ServoRunning = 1;       //¶æ»ú¿ªÊ¼¶¯×÷
+ 142   2              }
+ 143   1              if(ServoRunning)
+ 144   1              {
+ 145   2                      ServoPwmDutyIncTimes--;
+ 146   2                      for(i=0;i<8;i++)
+ 147   2                      {
+ 148   3                              if(ServoPwmDutyIncTimes == 0)
+ 149   3                              {               //×îºóÒ»´ÎµÝÔö¾ÍÖ±½Ó½«Éè¶¨Öµ¸³¸øµ±Ç°Öµ
+ 150   4                                      ServoPwmDuty[i] = ServoPwmDutySet[i];
+ 151   4                                      ServoRunning = 0;       //µ½´ïÉè¶¨Î»ÖÃ£¬¶æ»úÍ£Ö¹ÔË¶¯
+ 152   4                              }
+ 153   3                              else
+ 154   3                              {
+ 155   4                                      ServoPwmDuty[i] = ServoPwmDutySet[i] + 
+ 156   4                                              (signed short int)(ServoPwmDutyInc[i] * ServoPwmDutyIncTimes);
+ 157   4                              }
+ 158   3                      }
+ 159   2                      
+ 160   2              }
+ 161   1      }
+ 162          
+ 163          /***********************************************************
+ 164          * Ãû    ³Æ£º main()
+ 165          * ¹¦    ÄÜ£º Èë¿Úº¯Êý
+ 166          * Èë¿Ú²ÎÊý£º ÎÞ
+ 167          * ³ö¿Ú²ÎÊý£º ÎÞ
+ 168          * Ëµ    Ã÷£º                                     
+ 169          /**********************************************************/ 
+ 170          void main(void)
+ 171          {
+ 172   1              uint8 i;
+ 173   1              uint16 Time;
+ 174   1              InitTimer0();   //¶¨Ê±Æ÷0³õÊ¼»¯
+ 175   1              EA = 1;                 //¿ª×ÜÖÐ¶Ï
+ 176   1              while(1)                //´óÑ­»·
+ 177   1              {       
+ 178   2                      if(Flag_20ms)   // Flag_2_5ms   2.5ºÁÃëµ÷ÓÃÒ»´ÎServoPwmDutyCompare()»ò20ºÁÃëµ÷ÓÃÒ»´Î    
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:36:29 PAGE 4   
+
+ 179   2                      {       
+ 180   3                              Flag_20ms = 0;
+ 181   3                              Flag_2_5ms = 0;
+ 182   3                              Time++;
+ 183   3                              ServoPwmDutyCompare();
+ 184   3                      }
+ 185   2                      if(Time > 110)
+ 186   2                      {
+ 187   3                              Time = 0;
+ 188   3                              LED = ~LED;
+ 189   3                              if(ServoPwmDutySet[0] == 500)
+ 190   3                              {
+ 191   4                                      ServoPwmDutySet[0] = 2500;                      //Âö³å¿í¶ÈÔÚ2500Î¢Ãë£¬¶ÔÓ¦90¡ã
+ 192   4                                      for(i = 1;i<8;i++)
+ 193   4                                              ServoPwmDutySet[i] = 500;               //Âö³å¿í¶ÈÔÚ500Î¢Ãë£¬¶ÔÓ¦-90¡ã
+ 194   4                              }
+ 195   3                              else
+ 196   3                              {
+ 197   4                                      ServoPwmDutySet[0] = 500;                       //Âö³å¿í¶ÈÔÚ500Î¢Ãë£¬¶ÔÓ¦-90¡ã
+ 198   4                                      for(i = 1;i<8;i++)
+ 199   4                                              ServoPwmDutySet[i] = 1500;              //Âö³å¿í¶ÈÔÚ1500Î¢Ãë£¬¶ÔÓ¦0¡ã
+ 200   4                              }
+ 201   3                              ServoPwmDutyHaveChange = 1;
+ 202   3                      }
+ 203   2              }
+ 204   1      }
+ 205          
+ 206          /***********************************************************
+ 207          * Ãû    ³Æ£º Timer0_isr() interrupt 1 using 1
+ 208          * ¹¦    ÄÜ£º Ê±ÖÓ0ÖÐ¶Ï´¦Àí
+ 209          * Èë¿Ú²ÎÊý£º ÎÞ
+ 210          * ³ö¿Ú²ÎÊý£º ÎÞ
+ 211          * Ëµ    Ã÷£º                                     
+ 212          /**********************************************************/ 
+ 213          void Timer0_isr(void) interrupt 1 using 1
+ 214          {
+ 215   1              static uint16 i = 1;    //¾²Ì¬±äÁ¿£ºÃ¿´Îµ÷ÓÃº¯ÊýÊ±±£³ÖÉÏÒ»´ÎËù¸³µÄÖµ£¬
+ 216   1                                                              //¸úÈ«¾Ö±äÁ¿ÀàËÆ£¬²»Í¬ÊÇËüÖ»ÄÜÓÃÓÚ´Ëº¯ÊýÄÚ²¿
+ 217   1              switch(i)
+ 218   1              {
+ 219   2                      case 1:
+ 220   2                              SERVO0 = 1;     //PWM¿ØÖÆ½Å¸ßµçÆ½
+ 221   2                              //¸ø¶¨Ê±Æ÷0¸³Öµ£¬¼ÆÊýPwm0Duty¸öÂö³åºó²úÉúÖÐ¶Ï£¬ÏÂ´ÎÖÐ¶Ï»á½øÈëÏÂÒ»¸öcaseÓï¾ä
+ 222   2                              Timer0Value(ServoPwmDuty[0]);
+ 223   2                              Flag_20ms = 1;
+ 224   2                              Flag_2_5ms = 1;
+ 225   2                              break;
+ 226   2                      case 2:
+ 227   2                              SERVO0 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 228   2                              //´Ë¼ÆÊýÆ÷¸³Öµ²úÉúµÄÖÐ¶Ï±íÊ¾ÏÂÒ»¸öµ¥ÔªÒª½øÐÐÈÎÎñµÄ¿ªÊ¼
+ 229   2                              Timer0Value(2500-ServoPwmDuty[0]);      
+ 230   2                              break;
+ 231   2                      case 3:
+ 232   2                              SERVO1 = 1;     
+ 233   2                              Timer0Value(ServoPwmDuty[1]);
+ 234   2                              Flag_2_5ms = 1;
+ 235   2                              break;
+ 236   2                      case 4:
+ 237   2                              SERVO1 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 238   2                              Timer0Value(2500-ServoPwmDuty[1]);      
+ 239   2                              break;
+ 240   2                      case 5:
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:36:29 PAGE 5   
+
+ 241   2                              SERVO2 = 1;     
+ 242   2                              Timer0Value(ServoPwmDuty[2]);
+ 243   2                              Flag_2_5ms = 1;
+ 244   2                              break;
+ 245   2                      case 6:
+ 246   2                              SERVO2 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 247   2                              Timer0Value(2500-ServoPwmDuty[2]);      
+ 248   2                              break;  
+ 249   2                      case 7:
+ 250   2                              SERVO3 = 1;     
+ 251   2                              Timer0Value(ServoPwmDuty[3]);
+ 252   2                              Flag_2_5ms = 1;
+ 253   2                              break;
+ 254   2                      case 8:
+ 255   2                              SERVO3 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 256   2                              Timer0Value(2500-ServoPwmDuty[3]);      
+ 257   2                              break;  
+ 258   2                      case 9:
+ 259   2                              SERVO4 = 1;     
+ 260   2                              Timer0Value(ServoPwmDuty[4]);
+ 261   2                              Flag_2_5ms = 1;
+ 262   2                              break;
+ 263   2                      case 10:
+ 264   2                              SERVO4 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 265   2                              Timer0Value(2500-ServoPwmDuty[4]);      
+ 266   2                              break;  
+ 267   2                      case 11:
+ 268   2                              SERVO5 = 1;     
+ 269   2                              Timer0Value(ServoPwmDuty[5]);
+ 270   2                              Flag_2_5ms = 1;
+ 271   2                              break;
+ 272   2                      case 12:
+ 273   2                              SERVO5 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 274   2                              Timer0Value(2500-ServoPwmDuty[5]);      
+ 275   2                              break;
+ 276   2                      case 13:
+ 277   2                              SERVO6 = 1;     
+ 278   2                              Timer0Value(ServoPwmDuty[6]);
+ 279   2                              Flag_2_5ms = 1;
+ 280   2                              break;
+ 281   2                      case 14:
+ 282   2                              SERVO6 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 283   2                              Timer0Value(2500-ServoPwmDuty[6]);      
+ 284   2                              break;
+ 285   2                      case 15:
+ 286   2                              SERVO7 = 1;     
+ 287   2                              Timer0Value(ServoPwmDuty[7]);
+ 288   2                              Flag_2_5ms = 1;
+ 289   2                              break;
+ 290   2                      case 16:
+ 291   2                              SERVO7 = 0;     //PWM¿ØÖÆ½ÅµÍµçÆ½
+ 292   2                              Timer0Value(2500-ServoPwmDuty[7]);
+ 293   2                              i = 0;  
+ 294   2                              break;                           
+ 295   2              }
+ 296   1              i++;
+ 297   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    829    ----
+   CONSTANT SIZE    =   ----    ----
+C51 COMPILER V9.06   MAIN                                                                  06/18/2016 15:36:29 PAGE 6   
+
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     70       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      4    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
